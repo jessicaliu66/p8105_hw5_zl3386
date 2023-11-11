@@ -7,5 +7,98 @@ output: github_document
 
 ```{r, message = FALSE}
 library(tidyverse)
+library(rvest)
+```
+
+## Problem 1
+
+```{r import data}
+homicide_df = 
+  read_csv("data/homicide-data.csv") |>
+  mutate(
+    victim_age = as.numeric(victim_age))
+```
+
+* The raw data has `r nrow(homicide_df)` rows and `r ncol(homicide_df)` columns. Each row represents a homicide record (identified by a `uid`), with information about the location of the killing (`city`, `state`, `lat` and `lon`), whether an arrest was made (`disposition`), and basic demographic information about the victim (last and first name, race, age and sex).
+
+
+Create a `city_state` variable.
+
+```{r}
+homicide_df = homicide_df |>
+  mutate(
+    city_state = paste(city, ",", state)
+  )
+```
+
+summarize within cities to obtain the total number of homicides and the number of unsolved homicides.
+
+```{r}
+homicide_df |>
+  group_by(city) |>
+  summarize(
+    total_homicide = n(),
+    unsolved_homicide = sum(disposition %in% c("Closed without arrest", "Open/No arrest"))
+  )
+```
+
+
+For the city of Baltimore, MD, use the `prop.test` function to estimate the proportion of homicides that are unsolved; save the output of `prop.test` as an R object, apply the `broom::tidy` to this object and pull the estimated proportion and confidence intervals from the resulting tidy dataframe.
+
+```{r}
+unsolved = homicide_df |>
+  group_by(city) |>
+  summarize(
+    total_homicide = n(),
+    unsolved_homicide = sum(disposition %in% c("Closed without arrest", "Open/No arrest"))
+  ) |>
+  filter(city == "Baltimore") |>
+  select(unsolved_homicide, total_homicide) 
+
+Baltimore_prop = prop.test(x = pull(unsolved, unsolved_homicide), n = pull(unsolved, total_homicide)) |>
+  broom::tidy() |>
+  select(estimate, conf.low, conf.high)
+```
+
+* The estimated proportion is `r Baltimore_prop |> pull(estimate) |> round(3)`, and its 95% confidence interval is [`r Baltimore_prop |> pull(conf.low) |> round(3)`, `r Baltimore_prop |> pull(conf.high) |> round(3)`].
+
+
+Run `prop.test` for each of the cities in the dataset, and extract both the proportion of unsolved homicides and the confidence interval for each.
+
+```{r}
+tb_prop_test = function(tb, alpha = 0.95) {
+  prop.test(x = sum(tb), n = nrow(tb), conf.level = alpha)
+}
+
+unsolved_df = homicide_df |>
+  mutate(
+    unsolved = case_match(
+      disposition,
+      c("Closed without arrest", "Open/No arrest") ~ 1,
+      "Closed by arrest" ~ 0
+    )
+  ) |>
+  select(city, unsolved) |>
+  nest(unsolved_status = -city) |>
+  mutate(
+    test = map(unsolved_status, tb_prop_test),
+    results = map(test, broom::tidy)
+  ) |>
+  select(city, results) |>
+  unnest(results) |>
+  select(city, estimate, conf.low, conf.high)
+  
+```
+
+Create a plot that shows the estimates and CIs for each city – check out `geom_errorbar` for a way to add error bars based on the upper and lower limits. Organize cities according to the proportion of unsolved homicides.
+
+```{r}
+unsolved_df |>
+  mutate(city = fct_reorder(city, estimate)) |> 
+  ggplot(aes(x = city, y = estimate)) +
+  geom_point() +
+  geom_errorbar(aes(ymin = conf.low, ymax = conf.high)) +
+  labs(title = "Estimated proportion of unsolved homicides for different cities", y = "proportion") +
+  theme(axis.text.x = element_text(angle = 60, hjust = 1)) 
 ```
 
