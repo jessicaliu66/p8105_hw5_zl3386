@@ -8,6 +8,7 @@ output: github_document
 ```{r, message = FALSE}
 library(tidyverse)
 library(rvest)
+library(readr)
 ```
 
 ## Problem 1
@@ -90,7 +91,7 @@ unsolved_df = homicide_df |>
   
 ```
 
-Create a plot that shows the estimates and CIs for each city – check out `geom_errorbar` for a way to add error bars based on the upper and lower limits. Organize cities according to the proportion of unsolved homicides.
+Create a plot that shows the estimates and CIs for each city.
 
 ```{r}
 unsolved_df |>
@@ -102,3 +103,48 @@ unsolved_df |>
   theme(axis.text.x = element_text(angle = 60, hjust = 1)) 
 ```
 
+
+## Problem 2
+
+```{r}
+# dataframe containing all file names
+file_name = list.files("data/study_data")
+
+# read in data for each subject
+read_data = function(file) {
+  read_csv(str_c("data/study_data/", file))
+}
+
+study_df = data.frame(file_name) |>
+  mutate(
+    data = map(file_name, read_data)
+  )
+  
+# tidy the result
+study_df = study_df |>
+  mutate(
+    arm = substr(file_name, 1, 3),
+    subject_id = substr(file_name, 5, 6)
+  ) |>
+  select(subject_id, arm, data) |>
+  unnest(data) |>
+  pivot_longer(
+    week_1:week_8,
+    names_to = "week",
+    values_to = "value"
+  ) |>
+  mutate(week = parse_number(week))
+
+```
+
+Make a spaghetti plot showing observations on each subject over time.
+
+```{r}
+study_df |> 
+  ggplot(aes(x = week, y = value, group = interaction(subject_id, arm), color = subject_id, lty = arm)) +
+  geom_line()
+```
+
+* From the spaghetti plot, we can see that in this longitudinal study, the experimental arm has a significant higher value than the control arm in general.
+
+* Also, the value in the experimental arm tends to increase over time, while the value in the control arm remains relatively stable.
