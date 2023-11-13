@@ -206,20 +206,35 @@ for(mu in 0:6) {
 
 ```
 
-```{r plots}
+Make a plot showing the proportion of times the null was rejected (the power of the test) on the y axis and the true value of μ on the x axis.
+
+```{r}
 # power of the test
 results |>
   ggplot(aes(x = mu, y = power)) +
   geom_point() +
   geom_line() +
   labs(title = "Power of the test")
+```
 
+* From the plot, we can see that there's a positive association between effect size and power, which means when the difference between the true μ and the null value 0 increases, there's a higher probability of rejecting the false null hypothesis.
+
+* Also, as μ gets larger, the increasing of power will slow down and approach the maximum value of 1.
+
+
+Make a plot showing the average estimate of $\hat{μ}$ on the y axis and the true value of μ on the x axis.
+
+```{r}
 results |>
   ggplot(aes(x = mu, y = total_mu_hat)) +
   geom_point() +
   geom_line() +
   labs(title = "Average estimate of mu")
+```
 
+Make a second plot showing the average estimate of $\hat{μ}$ __only in samples for which the null was rejected__ on the y axis and the true value of μ on the x axis.
+
+```{r}
 results |>
   ggplot(aes(x = mu, y = reject_mu_hat)) +
   geom_point() +
@@ -227,3 +242,6 @@ results |>
   labs(title = "Average estimate of mu in null rejected samples")
 ```
 
+* From the plot, we can see that the sample average of $\hat{μ}$ across tests for which the null is rejected approximately equal to the true value of μ.
+
+* This is because the samples were randomly generated from x∼Normal[μ,σ], and when the number of samples (and null rejected samples) is large enough, their mean distribution tend to be approximately __symmetric__ to the true μ due to the randomness, causing the average of null rejected samples' $\hat{μ}$ to be approximately equal to μ.
