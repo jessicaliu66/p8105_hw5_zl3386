@@ -148,3 +148,82 @@ study_df |>
 * From the spaghetti plot, we can see that in this longitudinal study, the experimental arm has a significant higher value than the control arm in general.
 
 * Also, the value in the experimental arm tends to increase over time, while the value in the control arm remains relatively stable.
+
+
+## Problem 3
+
+```{r}
+n = 30
+sigma = 5
+reps = 5000
+
+# store the results for each mu value
+results = tibble(
+  mu = numeric(), 
+  power = numeric(), 
+  reject_mu_hat = numeric(), 
+  total_mu_hat = numeric()
+)
+
+# function for generating each dataset and obtain the estimate and p-value
+sim_normal_test = function(mu = 0, sigma = 5, n = 30) {
+  rnorm(n, mu, sigma) |>
+    t.test() |>
+    broom::tidy() |>
+    select(estimate, p.value)
+}
+
+# iteration
+for(mu in 0:6) {
+  reject_num = 0
+  reject_est = c()
+  total_est = c()
+  
+  for(i in 1:reps) {
+    test = sim_normal_test(mu = mu)
+    total_est = append(total_est, pull(test, estimate))
+    
+    if(pull(test, p.value) < 0.05) {
+      reject_num = reject_num + 1
+      reject_est = append(reject_est, pull(test, estimate))
+    }
+    
+  }
+  
+  power = reject_num / reps
+  reject_mu_hat = mean(reject_est)
+  total_mu_hat = mean(total_est)
+  
+  results = results |>
+    add_row(
+      mu = mu,
+      power = power,
+      reject_mu_hat = reject_mu_hat,
+      total_mu_hat = total_mu_hat
+    )
+  
+}
+
+```
+
+```{r plots}
+# power of the test
+results |>
+  ggplot(aes(x = mu, y = power)) +
+  geom_point() +
+  geom_line() +
+  labs(title = "Power of the test")
+
+results |>
+  ggplot(aes(x = mu, y = total_mu_hat)) +
+  geom_point() +
+  geom_line() +
+  labs(title = "Average estimate of mu")
+
+results |>
+  ggplot(aes(x = mu, y = reject_mu_hat)) +
+  geom_point() +
+  geom_line() +
+  labs(title = "Average estimate of mu in null rejected samples")
+```
+
